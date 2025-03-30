@@ -1,0 +1,239 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Administracyjny</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .update-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        .update-item.active .update-content {
+            max-height: 500px;
+            transition: max-height 0.5s ease-in;
+        }
+
+        .copy-message {
+            display: none;
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 5px;
+            z-index: 1000;
+        }
+
+        .value-message {
+            display: none;
+            background-color: #ef4444;
+            color: white;
+            padding: 10px;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 5px;
+            z-index: 1000;
+        }
+
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
+
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white p-6">
+    <div class="flex flex-col lg:flex-row gap-6">
+        <!-- Lewa kolumna - formularze -->
+        <div class="flex-1 max-w-lg mx-auto">
+            <h1 class="text-3xl font-bold mb-4 text-center">Panel Administracyjny</h1>
+
+            <!-- Ikona wyświetleń z liczbą -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-md flex items-center space-x-2 justify-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12c0 1.657-1.343 3-3 3s-3-1.343-3-3 1.343-3 3-3 3 1.343 3 3zm-3-5a9 9 0 00-9 9h18a9 9 0 00-9-9z" />
+                </svg>
+                <span class="text-xl">{{ view_count }}</span>
+            </div>
+
+            <!-- Link do progress-bara z przyciskiem kopiowania -->
+            <div class="bg-gray-800 p-4 rounded-lg shadow-md flex items-center justify-between mb-6">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl">Strona paska postępu:</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <a href="{% url 'progress' public_id=progress.public_id %}" class="text-blue-400 hover:text-blue-600">Przejdź</a>
+                    <button onclick="copyLink()" class="text-blue-400 hover:text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2h8M3 10l2-2m0 0l2-2m-2 2H5"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Formularz do edycji procentu -->
+            <div class="bg-gray-800 p-6 rounded-lg shadow-md mb-6">
+                <h2 class="text-xl font-bold mb-2">Ustaw procent paska</h2>
+                <form method="post" onsubmit="return validatePercentage()">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label for="id_percentage" class="block text-sm font-medium mb-1">Procent:</label>
+                        <input type="number" name="percentage" id="id_percentage"
+                               min="0" max="100" step="1" value="{{ progress.percentage }}"
+                               class="w-full bg-gray-700 border border-gray-600 rounded py-2 px-3 text-white focus:outline-none focus:border-blue-500"
+                               oninput="checkPercentage(this)">
+                        <p class="text-xs text-gray-400 mt-1">Wprowadź wartość od 0 do 100</p>
+                    </div>
+                    <button type="submit" name="progress_form" class="w-full bg-green-500 hover:bg-green-700 py-2 px-4 rounded">
+                        Zapisz
+                    </button>
+                </form>
+            </div>
+
+            <!-- Formularz do dodawania aktualizacji -->
+            <div class="bg-gray-800 p-6 rounded-lg shadow-md">
+                <h2 class="text-xl font-bold mb-2">Dodaj aktualizację</h2>
+                <form method="post">
+                    {% csrf_token %}
+                    {{ update_form.as_p }}
+                    <button type="submit" name="update_form" class="w-full bg-blue-500 hover:bg-blue-700 py-2 px-4 rounded">
+                        Dodaj
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Prawa kolumna - lista aktualizacji -->
+        <div class="flex-1 max-w-lg mx-auto">
+            <h2 class="text-xl font-bold mb-4">Aktualizacje</h2>
+            <div class="space-y-3">
+                {% for update in updates %}
+                <div class="update-item bg-gray-800 rounded-lg shadow-md overflow-hidden">
+                    <div class="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-700 transition update-header">
+                        <h3 class="font-bold">{{ update.title }}</h3>
+                        <svg class="w-5 h-5 transform transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <div class="update-content bg-gray-700">
+                        <div class="p-4">
+                            <p class="text-gray-300 mb-3">{{ update.description }}</p>
+                            <button data-id="{{ update.id }}" class="delete-btn bg-red-600 text-white py-1 px-3 rounded text-sm">
+                                Usuń
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-gray-500">Brak aktualizacji.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Komunikat o skopiowanym linku -->
+    <div class="copy-message" id="copy-message">Link skopiowany!</div>
+
+    <!-- Komunikat o nieprawidłowej wartości -->
+    <div class="value-message" id="value-message"></div>
+
+    <script>
+        function copyLink() {
+            const link = window.location.href; // Skopiuj aktualny URL
+            navigator.clipboard.writeText(link).then(() => {
+                // Pokazuje komunikat
+                $('#copy-message').fadeIn().delay(2000).fadeOut();
+            }).catch(err => {
+                console.error('Błąd podczas kopiowania:', err);
+            });
+        }
+
+        function checkPercentage(input) {
+            const message = document.getElementById('value-message');
+
+            if (input.value > 100) {
+                input.value = 100;
+                message.textContent = 'Maksymalna wartość to 100%';
+                $(message).fadeIn().delay(2000).fadeOut();
+            } else if (input.value < 0) {
+                input.value = 0;
+                message.textContent = 'Minimalna wartość to 0%';
+                $(message).fadeIn().delay(2000).fadeOut();
+            }
+        }
+
+        function validatePercentage() {
+            const percentageInput = document.getElementById('id_percentage');
+            const message = document.getElementById('value-message');
+
+            if (percentageInput.value > 100) {
+                percentageInput.value = 100;
+                message.textContent = 'Maksymalna wartość to 100%';
+                $(message).fadeIn().delay(2000).fadeOut();
+                return false;
+            } else if (percentageInput.value < 0) {
+                percentageInput.value = 0;
+                message.textContent = 'Minimalna wartość to 0%';
+                $(message).fadeIn().delay(2000).fadeOut();
+                return false;
+            }
+            return true;
+        }
+
+        $(document).ready(function() {
+            // Rozwijanie/zwiń aktualizacji
+            $(".update-header").click(function() {
+                $(this).closest(".update-item").toggleClass("active");
+                $(this).find("svg").toggleClass("rotate-180");
+            });
+
+            // Obsługuje kliknięcie przycisku "Usuń"
+            $(".delete-btn").click(function(e) {
+                e.stopPropagation(); // Zapobiega rozwijaniu/zwiń podczas klikania przycisku usuwania
+                updateIdToDelete = $(this).data("id");
+                $("#confirm-modal").removeClass("hidden");
+            });
+
+            // Obsługuje kliknięcie "Anuluj"
+            $("#cancel-delete").click(function() {
+                $("#confirm-modal").addClass("hidden");
+            });
+
+            // Obsługuje kliknięcie "Tak" (usuwanie)
+            $("#confirm-delete").click(function() {
+                if (updateIdToDelete) {
+                    $.ajax({
+                        url: '/delete-update/{{ admin_id }}/',
+                        method: 'POST',
+                        data: {
+                            'update_id': updateIdToDelete,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        },
+                        success: function(response) {
+                            if (response.success) {
+                                $(`button[data-id=${updateIdToDelete}]`).closest('.update-item').remove();
+                                $("#confirm-modal").removeClass("hidden");
+                            } else {
+                                alert("Błąd podczas usuwania aktualizacji.");
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
