@@ -1,23 +1,81 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ progress.name }}</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .embed-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            transition: right 0.3s ease;
+            z-index: 100;
+            background-color: #1f2937;
+            overflow-y: auto;
+        }
+
+        .embed-panel.open {
+            right: 0;
+        }
+
+        .toggle-embed-btn {
+            position: fixed;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 101;
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.5rem 0.3rem;
+            border-top-left-radius: 0.5rem;
+            border-bottom-left-radius: 0.5rem;
+            cursor: pointer;
+            transition: opacity 0.3s ease 0.3s, visibility 0.3s ease 0.3s;
+            width: 60px;
+            text-align: center;
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .toggle-embed-btn.hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.1s ease, visibility 0.1s ease;
+        }
+
+        @media (max-width: 640px) {
+            .embed-panel {
+                width: 100%;
+                right: -100%;
+            }
+        }
+
+        #embed-preview-container {
+            min-height: 200px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
     <script>
         window.addEventListener('load', () => {
             let progressBar = document.getElementById('progress-bar');
             let progressPercentage = 0;
 
-            // Funkcja aktualizująca pasek postępu
+            // Function to update the progress bar
             function updateProgressBar() {
                 if (progressPercentage < {{ progress.percentage }}) {
                     progressPercentage++;
                     progressBar.style.width = progressPercentage + '%';
-                    document.getElementById('progress-text').innerText = progressPercentage + '% ukończone';
-                    setTimeout(updateProgressBar, 10); // Można dostosować szybkość zmiany
+                    document.getElementById('progress-text').innerText = progressPercentage + '% completed';
+                    setTimeout(updateProgressBar, 10);
                 }
             }
 
@@ -28,13 +86,13 @@
 <body class="bg-gray-900 text-white flex flex-col items-center p-6">
     <h1 class="text-3xl font-bold mb-4">{{ progress.name }}</h1>
 
-    <!-- Pasek ładowania -->
+    <!-- Progress bar -->
     <div class="w-full max-w-2xl bg-gray-700 rounded-full h-8">
         <div id="progress-bar" class="bg-green-500 h-8 rounded-full transition-all duration-500"></div>
     </div>
-    <p id="progress-text" class="mt-2 text-lg">{{ progress.percentage }}% ukończone</p>
+    <p id="progress-text" class="mt-2 text-lg">{{ progress.percentage }}% completed</p>
 
-    <!-- Lista aktualizacji -->
+    <!-- Update list -->
     <div class="mt-6 w-full max-w-2xl space-y-4">
         {% for update in updates %}
         <div class="bg-gray-800 p-4 rounded-lg shadow-md">
@@ -43,5 +101,196 @@
         </div>
         {% endfor %}
     </div>
+
+    <!-- Toggle embed panel button -->
+    <button class="toggle-embed-btn">
+        Embed
+    </button>
+
+    <!-- Embed panel -->
+    <div class="embed-panel">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Embed This Progress</h2>
+                <button class="close-panel-btn text-gray-400 hover:text-white text-2xl">
+                    &times;
+                </button>
+            </div>
+
+            <!-- Embed generator form -->
+            <div class="mb-8">
+                <div class="mb-4">
+                    <label class="block text-gray-300 mb-2">Theme</label>
+                    <select id="embed-theme" class="bg-gray-700 text-white rounded p-2 w-full">
+                        <option value="dark">Dark</option>
+                        <option value="light">Light</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-300 mb-2">Show Updates</label>
+                    <select id="embed-updates" class="bg-gray-700 text-white rounded p-2 w-full">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-300 mb-2">Animation</label>
+                    <select id="embed-animate" class="bg-gray-700 text-white rounded p-2 w-full">
+                        <option value="true">Yes</option>
+                        <option value="false">No</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-300 mb-2">Width</label>
+                    <input type="text" id="embed-width" value="100%" class="bg-gray-700 text-white rounded p-2 w-full">
+                </div>
+
+                <button id="generate-embed-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full mb-4">
+                    Generate Embed Code
+                </button>
+            </div>
+
+            <!-- Generated code -->
+            <div id="embed-code-section" class="hidden">
+                <h3 class="text-xl font-bold mb-2">Your Embed Code</h3>
+                <div class="bg-gray-900 p-4 rounded mb-4">
+                    <pre id="embed-code" class="overflow-x-auto text-sm text-gray-300 p-2 bg-gray-800 rounded"></pre>
+                </div>
+                <button id="copy-embed-btn" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded w-full">
+                    Copy to Clipboard
+                </button>
+            </div>
+
+            <!-- Preview -->
+            <div class="mt-8">
+                <h3 class="text-xl font-bold mb-2">Preview</h3>
+                <div id="embed-preview-container" class="bg-gray-900 p-4 rounded">
+                    <div id="progress-embed-preview"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Embed panel functionality -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle embed panel
+            const toggleBtn = document.querySelector('.toggle-embed-btn');
+            const closeBtn = document.querySelector('.close-panel-btn');
+            const embedPanel = document.querySelector('.embed-panel');
+
+            function openPanel() {
+                embedPanel.classList.add('open');
+                toggleBtn.classList.add('hidden');
+            }
+
+            function closePanel() {
+                embedPanel.classList.remove('open');
+
+                setTimeout(() => {
+                    toggleBtn.classList.remove('hidden');
+                }, 300);
+            }
+
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                openPanel();
+            });
+
+            closeBtn.addEventListener('click', function() {
+                closePanel();
+            });
+
+            // Close panel when clicking outside
+            document.addEventListener('click', function(e) {
+                if (embedPanel.classList.contains('open') &&
+                    !embedPanel.contains(e.target) &&
+                    e.target !== toggleBtn) {
+                    closePanel();
+                }
+            });
+
+            // Prevent panel from closing when clicking inside it
+            embedPanel.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
+
+            // Generate embed code
+            const generateBtn = document.getElementById('generate-embed-btn');
+            const embedCodeSection = document.getElementById('embed-code-section');
+            const embedCode = document.getElementById('embed-code');
+            const copyBtn = document.getElementById('copy-embed-btn');
+            const previewContainer = document.getElementById('progress-embed-preview');
+
+            // Initialize embed widget
+            let currentEmbedWidget = null;
+
+            function initializeEmbedWidget() {
+                const theme = document.getElementById('embed-theme').value;
+                const showUpdates = document.getElementById('embed-updates').value === 'true';
+                const animate = document.getElementById('embed-animate').value === 'true';
+                const width = document.getElementById('embed-width').value;
+
+                // Clear previous widget if exists
+                if (currentEmbedWidget) {
+                    previewContainer.innerHTML = '';
+                }
+
+                // Create new widget
+                currentEmbedWidget = new ProgressBarEmbed('progress-embed-preview', '{{ progress.public_id }}', {
+                    theme: theme,
+                    showUpdates: showUpdates,
+                    animate: animate,
+                    width: width
+                });
+            }
+
+            // Generate embed code
+            generateBtn.addEventListener('click', function() {
+                const theme = document.getElementById('embed-theme').value;
+                const showUpdates = document.getElementById('embed-updates').value;
+                const animate = document.getElementById('embed-animate').value;
+                const width = document.getElementById('embed-width').value;
+
+                // Generate code
+                const code = `&lt;div id="progress-embed-{{ progress.public_id }}"
+     data-progress-embed="{{ progress.public_id }}"
+     data-theme="${theme}"
+     data-show-updates="${showUpdates}"
+     data-animate="${animate}"
+     style="width: ${width}"&gt;
+&lt;/div&gt;
+&lt;script src="{{ request.scheme }}://{{ request.get_host }}{% static 'js/progress-embed.js' %}"&gt;&lt;/script&gt;`;
+
+                embedCode.innerHTML = code;
+                embedCodeSection.classList.remove('hidden');
+
+                // Update preview
+                initializeEmbedWidget();
+            });
+
+            // Copy to clipboard
+            copyBtn.addEventListener('click', function() {
+                const textToCopy = embedCode.textContent;
+                navigator.clipboard.writeText(textToCopy).then(function() {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy to Clipboard';
+                    }, 2000);
+                }).catch(function(err) {
+                    console.error('Could not copy text: ', err);
+                });
+            });
+
+            // Initialize first preview
+            initializeEmbedWidget();
+        });
+    </script>
+
+    <!-- Load embed script -->
+    <script src="{{ request.scheme }}://{{ request.get_host }}{% static 'js/progress-embed.js' %}"></script>
 </body>
 </html>

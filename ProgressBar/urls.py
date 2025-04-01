@@ -22,12 +22,12 @@ from . import views
 from ProgressBar.views import progress_view, admin_panel, create_progress_bar
 
 urlpatterns = [
-    path('', views.create_progress_view, name='create_progress'),  # Strona główna do tworzenia progress bara
-    path('created/<str:admin_id>/', views.created_view, name='created'),  # Strona z linkami
-    path('admin-panel/<str:admin_id>/', views.admin_panel, name='admin_panel'),  # Panel administracyjny
+    path('', views.create_progress_view, name='create_progress'),
+    path('created/<str:admin_id>/', views.created_view, name='created'),
+    path('admin-panel/<str:admin_id>/', views.admin_panel, name='admin_panel'),
     path('progress/<str:public_id>/', views.progress_view, name='progress'),
     path('delete-update/<str:admin_id>/', views.delete_update, name='delete_update'),
-    # Usuwanie aktualizacji
+  path('api/progress/<uuid:public_id>/', views.progress_embed_api, name='progress_embed_api'),
+path('api/progress/<str:public_id>/', views.progress_embed_api, name='progress_embed_api'),
 
-    # Podgląd progress bara na podstawie public_id
 ]

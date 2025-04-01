@@ -1,30 +1,27 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nowy Progress Bar</title>
+    <title>New Progress Bar</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-900 text-white flex flex-col items-center p-6">
-    <h1 class="text-3xl font-bold mb-4">Twój pasek postępu został utworzony!</h1>
+    <h1 class="text-3xl font-bold mb-4">Your progress bar has been created!</h1>
 
-    <p class="mt-2">🔗 Link do podglądu: <a href="{{ public_link }}" class="text-blue-400 underline">{{ public_link }}</a></p>
-    <p class="mt-2">🔒 Link do zarządzania: <a href="{{ admin_link }}" class="text-red-400 underline">{{ admin_link }}</a></p>
+    <p class="mt-2">🔗 Preview link: <a href="{{ public_link }}" class="text-blue-400 underline">{{ public_link }}</a></p>
+    <p class="mt-2">🔒 Management link: <a href="{{ admin_link }}" class="text-red-400 underline">{{ admin_link }}</a></p>
 
     <div class="mt-4">
         <a id="download-link"
-           href="data:text/plain;charset=utf-8,Link%20do%20podgl%C4%85du:%20{{public_link}}%0ALink%20do%20zarz%C4%85dzania:%20{{admin_link}}"
-           download="linki.txt"
+           href="data:text/plain;charset=utf-8,Preview%20link:%20{{public_link}}%0AManagement%20link:%20{{admin_link}}"
+           download="links.txt"
            class="bg-blue-500 text-white px-4 py-2 rounded-md text-xl">
-           Pobierz linki
+           Download links
         </a>
     </div>
-    
-    
-    
 
-    <a href="/" class="mt-6 text-green-400 underline">🔄 Utwórz nowy</a>
+    <a href="/" class="mt-6 text-green-400 underline">🔄 Create a new one</a>
 
     <script>
         const downloadLink = document.getElementById('download-link');
@@ -32,12 +29,12 @@
 
         downloadLink.addEventListener('click', function(event) {
             if (!canDownload) {
-                event.preventDefault(); // Zatrzymaj kliknięcie
-                alert('Musisz poczekać 5 sekund przed kolejnym pobraniem.');
+                event.preventDefault(); // Stop the click
+                alert('You must wait 5 seconds before downloading again.');
                 return;
             }
 
-            // Blokada na 5 sekund
+            // Lock for 5 seconds
             canDownload = false;
             setTimeout(function() {
                 canDownload = true;

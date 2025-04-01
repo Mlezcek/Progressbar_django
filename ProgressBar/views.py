@@ -1,5 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import Http404, JsonResponse
+from django.views.decorators.http import require_GET
+
 from .models import Progress, Update, ProgressHistory
 from .forms import ProgressForm, UpdateForm, ProgressCreateForm
 
@@ -15,12 +17,13 @@ def progress_view(request, public_id):
     """Widok podglądu progress bara na podstawie public_id"""
     try:
         progress = Progress.objects.get(public_id=public_id)
-        progress.increment_view_count()  # Zwiększamy licznik wejść
+        progress.increment_view_count()
         updates = progress.updates.all()  # Pobranie wszystkich aktualizacji powiązanych z postępem
     except Progress.DoesNotExist:
         raise Http404("Progress bar not found")
 
     return render(request, 'progress.html', {'progress': progress, 'updates': updates})
+
 
 
 def admin_panel(request, admin_id):
@@ -104,3 +107,26 @@ def delete_update(request, admin_id):
             return JsonResponse({'success': True})
         except Update.DoesNotExist:
             return JsonResponse({'success': False, 'message': 'Aktualizacja nie została znaleziona'})
+
+
+def progress_embed_api(request, public_id):
+    """API endpoint for embedding progress bar"""
+    try:
+        progress = Progress.objects.get(public_id=public_id)
+        updates = progress.updates.all().order_by('-created_at')[:5]  # Ostatnie 5 aktualizacji
+
+        data = {
+            'name': progress.name,
+            'percentage': progress.percentage,
+            'updates': [
+                {
+                    'title': update.title,
+                    'description': update.description,
+                    'created_at': update.created_at.strftime("%Y-%m-%d %H:%M")
+                } for update in updates
+            ],
+            'success': True
+        }
+        return JsonResponse(data)
+    except Progress.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Progress bar not found'}, status=404)
