@@ -1,5 +1,5 @@
  class ProgressBarEmbed {
-    constructor(containerId, publicId, options = {}) {
+     constructor(containerId, publicId, options = {}) {
         this.container = document.getElementById(containerId);
         if (!this.container) {
             console.error(`Container with ID ${containerId} not found`);
@@ -8,16 +8,19 @@
 
         this.publicId = publicId;
         this.options = {
-            theme: options.theme || 'dark', // 'dark' or 'light'
-            showUpdates: options.showUpdates !== false,
-            animate: options.animate !== false,
-            width: options.width || '100%',
-            height: options.height || 'auto'
-        };
+        theme: options.theme || 'dark',
+        showUpdates: options.showUpdates !== false,
+        animate: options.animate !== false,
+        width: options.width || '100%',
+        height: options.height || 'auto',
+        apiBaseUrl: options.apiBaseUrl || window.location.origin,
+        showLinkIcon: options.showLinkIcon !== false // Domyślnie true (ikonka widoczna)
+    };
 
         this.initStyles();
         this.loadProgress();
     }
+
 
     initStyles() {
         const styleId = 'progress-embed-styles';
@@ -122,9 +125,16 @@
         document.head.appendChild(style);
     }
 
+
     async loadProgress() {
         try {
-            const response = await fetch(`/api/progress/${this.publicId}/`);
+            const apiUrl = `${this.options.apiBaseUrl}/api/progress/${this.publicId}/`;
+            const response = await fetch(apiUrl);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
             const data = await response.json();
 
             if (!data.success) {
@@ -135,86 +145,112 @@
             this.renderProgress(data);
         } catch (error) {
             this.showError('Failed to fetch progress data');
-            console.error(error);
+            console.error('Error fetching progress:', error);
         }
     }
+
 
     renderProgress(data) {
-        // Clear container
-        this.container.innerHTML = '';
+    // Clear container
+    this.container.innerHTML = '';
 
-        // Create main container
-        const mainDiv = document.createElement('div');
-        mainDiv.className = `progress-embed-container progress-embed-${this.options.theme}`;
-        mainDiv.style.width = this.options.width;
+    // Create main container
+    const mainDiv = document.createElement('div');
+    mainDiv.className = `progress-embed-container progress-embed-${this.options.theme}`;
+    mainDiv.style.width = this.options.width;
 
-        // Add header
-        const header = document.createElement('div');
-        header.className = 'progress-embed-header';
-        header.textContent = data.name;
-        mainDiv.appendChild(header);
+    // Add header
+    const header = document.createElement('div');
+    header.className = 'progress-embed-header';
 
-        // Add content
-        const content = document.createElement('div');
-        content.className = 'progress-embed-content';
+    // Create header text
+    const headerText = document.createElement('span');
+    headerText.textContent = data.name;
+    header.appendChild(headerText);
 
-        // Progress bar
-        const barContainer = document.createElement('div');
-        barContainer.className = 'progress-bar-container';
+    // Add link icon if enabled
+    if (this.options.showLinkIcon) {
+        header.style.position = 'relative'; // Needed for positioning the icon
 
-        const progressBar = document.createElement('div');
-        progressBar.className = 'progress-bar';
-        if (this.options.animate) {
-            setTimeout(() => {
-                progressBar.style.width = `${data.percentage}%`;
-            }, 100);
-        } else {
-            progressBar.style.width = `${data.percentage}%`;
-        }
-        barContainer.appendChild(progressBar);
-        content.appendChild(barContainer);
+        // Create the link icon
+        const linkIcon = document.createElement('a');
+        linkIcon.href = this.options.apiBaseUrl.replace('/api', '') + '/progress/' + this.publicId;
+        linkIcon.style.position = 'absolute';
+        linkIcon.style.right = '16px';
+        linkIcon.style.top = '50%';
+        linkIcon.style.transform = 'translateY(-50%)';
+        linkIcon.style.cursor = 'pointer';
+        linkIcon.style.textDecoration = 'none';
+        linkIcon.style.color = this.options.theme === 'dark' ? 'white' : '#2d3748';
+        linkIcon.innerHTML = '🔗'; // You can replace this with an actual icon
+        linkIcon.title = 'View full progress page';
 
-        // Percentage text
-        const percentageText = document.createElement('div');
-        percentageText.className = 'progress-percentage';
-        percentageText.textContent = `${data.percentage}% completed`;
-        content.appendChild(percentageText);
-
-        // Updates if enabled
-        if (this.options.showUpdates && data.updates && data.updates.length > 0) {
-            const updatesContainer = document.createElement('div');
-            updatesContainer.className = 'progress-updates';
-
-            data.updates.forEach(update => {
-                const updateDiv = document.createElement('div');
-                updateDiv.className = 'progress-update';
-
-                const title = document.createElement('div');
-                title.className = 'progress-update-title';
-                title.textContent = update.title;
-                updateDiv.appendChild(title);
-
-                if (update.description) {
-                    const desc = document.createElement('div');
-                    desc.className = 'progress-update-description';
-                    desc.textContent = update.description;
-                    updateDiv.appendChild(desc);
-                }
-
-                const date = document.createElement('div');
-                date.className = 'progress-update-date';
-                date.textContent = update.created_at;
-                updateDiv.appendChild(date);
-
-                updatesContainer.appendChild(updateDiv);
-            });
-
-            content.appendChild(updatesContainer);
-        }
-
-        mainDiv.appendChild(content);
-        this.container.appendChild(mainDiv);
+        header.appendChild(linkIcon);
     }
+
+    mainDiv.appendChild(header);
+
+    // Rest of your existing content code...
+    const content = document.createElement('div');
+    content.className = 'progress-embed-content';
+
+    // Progress bar
+    const barContainer = document.createElement('div');
+    barContainer.className = 'progress-bar-container';
+
+    const progressBar = document.createElement('div');
+    progressBar.className = 'progress-bar';
+    if (this.options.animate) {
+        setTimeout(() => {
+            progressBar.style.width = `${data.percentage}%`;
+        }, 100);
+    } else {
+        progressBar.style.width = `${data.percentage}%`;
+    }
+    barContainer.appendChild(progressBar);
+    content.appendChild(barContainer);
+
+    // Percentage text
+    const percentageText = document.createElement('div');
+    percentageText.className = 'progress-percentage';
+    percentageText.textContent = `${data.percentage}% completed`;
+    content.appendChild(percentageText);
+
+    // Updates if enabled
+    if (this.options.showUpdates && data.updates && data.updates.length > 0) {
+        const updatesContainer = document.createElement('div');
+        updatesContainer.className = 'progress-updates';
+
+        data.updates.forEach(update => {
+            const updateDiv = document.createElement('div');
+            updateDiv.className = 'progress-update';
+
+            const title = document.createElement('div');
+            title.className = 'progress-update-title';
+            title.textContent = update.title;
+            updateDiv.appendChild(title);
+
+            if (update.description) {
+                const desc = document.createElement('div');
+                desc.className = 'progress-update-description';
+                desc.textContent = update.description;
+                updateDiv.appendChild(desc);
+            }
+
+            const date = document.createElement('div');
+            date.className = 'progress-update-date';
+            date.textContent = update.created_at;
+            updateDiv.appendChild(date);
+
+            updatesContainer.appendChild(updateDiv);
+        });
+
+        content.appendChild(updatesContainer);
+    }
+
+    mainDiv.appendChild(content);
+    this.container.appendChild(mainDiv);
+}
 
     showError(message) {
         this.container.innerHTML = `
@@ -233,7 +269,9 @@ document.addEventListener('DOMContentLoaded', () => {
             theme: element.getAttribute('data-theme') || 'dark',
             showUpdates: element.getAttribute('data-show-updates') !== 'false',
             animate: element.getAttribute('data-animate') !== 'false',
-            width: element.getAttribute('data-width') || '100%'
+            width: element.getAttribute('data-width') || '100%',
+            apiBaseUrl: element.getAttribute('data-api-base-url') || window.location.origin,
+            showLinkIcon: element.getAttribute('data-show-link-icon') !== 'false'
         };
 
         new ProgressBarEmbed(element.id, publicId, options);
